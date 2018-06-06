@@ -1,0 +1,108 @@
+group_vars
+
+main.yml----------#
+
+- set_fact:
+    patch_phase: patch-master
+
+- name 
+  local_action: fail msg="supports single host {{ play_host | length ) specified)"
+  run_once: true
+  when: play_hosts is not defined or play_hosts|length != 1
+
+
+- block:
+    
+    - name:
+      include: /roles/tasks/lock.yml
+
+    -name:
+     command: cat /etc/patching/no-autopatch
+     changed_when: false
+     register: no_autopatch_out
+     when no.autopatch.stat.exists == True
+
+   -fail : msg
+    when no.auto.patch.stats.exists == True
+
+   - debug: 
+       var = ansible_virutalization_type
+
+  
+   - name: prepatch
+     include: pre-tasks.yml
+      vars:
+        patch-phase: patch-pre
+
+
+   always:
+      -name :
+       include: /roles/common/tasks/monitoring.yml
+       vars:
+          hpov_action: "enable"
+
+
+
+pre-patch--------------#
+
+
+reboot.yml-------#
+
+-name: reboot the system
+ shell:  
+   sleep 3 && shutdown -r now 
+ async:3
+ poll: 0
+ ignore_errors: true
+ changed_when: false
+
+-name: wait fro come back online
+  local_action:
+    module: wait_for
+    host: {{ ansible_fqdn }}
+    port:22
+    delay :120
+    timeout: 1800
+
+
+-name: allow sevices to restart
+ local_action: shell sleep {{ sleep value }}
+ changed_when: false
+
+
+-name: check rhel7 system startup
+ command: systemctl is-active multi-user.target
+ register: result
+ until: result.rc = 0
+ delay: 15
+ retries: 30
+  when: systemctl.status.exists
+ changed_when: false
+
+- name: uptime value
+  command: cat /proc/uptime
+  regiser: proc_uptime_post
+
+-set_fact:
+  uptime_pre: "{{ proc_uptime_pre.stdout | regex_replace('^(\\d+)\\..*', '\\1') }}"
+
+-set_fact:
+   uptime_post: "{{ proc_uptime_post.stdout | regex_replace('^(\\d+)\\..*', '\\1') }}"
+
+-debug: msg=uptime_post {{ uptime_post }} > uptime_pre {{ uptime_pre}}"
+  when: |
+    uptime_post|int > uptime_pre|int
+
+
+-name: check server has rebooted
+  fail:
+    msg: server post-reboot uptime uptime gerated than pre-reboot. check shutdown has run correctly"
+  when: |
+    uptime_post|int > uptime_pre|int
+
+
+
+lock.yml--------------------#
+
+
+
