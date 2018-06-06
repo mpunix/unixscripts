@@ -1,0 +1,62 @@
+
+
+local_action:
+  module: uri
+  method: POST
+  url: "{{ vco_url}}"
+  return_content: yes
+  body: "{{ vco_paylod | to_jason }}"
+  body_format: jason
+  force_basic_auth: yes
+  HEADER_Content-Type: "applicatoin/jason"
+  HEADER_Accept: "appplicatoin/jason"
+  user: "{{ vco_user }}"
+  password: "{{ voc_apass }}"
+  status_code: "{{vco_status_code }}"
+  validate_certs: no
+register: vco_post
+failed_when: vco_payload is not defined
+no_log: true
+
+vars/main.yml
+
+vco_url: "{{vco_host}}/vco/api/workflows/asdasdfasdf/execustions"
+
+- name: "check asm disk workflow state"
+  local_action:
+    module: uri
+    method: GET
+    url: "{{ vco_post.location }}"
+   body_format: jason
+  force_basic_auth: yes
+  HEADER_Content-Type: "applicatoin/jason"
+  HEADER_Accept: "appplicatoin/jason"
+  user: "{{ vco_user }}"
+  password: "{{ voc_apass }}"
+  status_code: 200
+  validate_certs: no
+register: vco_post
+until: vm_state.json.state.find("completed") != 1
+ retries:12
+ delay: 6
+ failed_when: False
+ no_log_true
+
+
+vco_payload:
+  parameters:
+     -name: "viritualname"
+      type: strings
+      scope: local
+      value:
+         string:
+         value: "{{ hosts }}"
+
+    - nmae: disksize
+      type: number
+      scope: local
+      value:
+         strings:
+           value: {{disk_size}}
+
+
